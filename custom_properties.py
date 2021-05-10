@@ -589,7 +589,8 @@ class Flash3PhaseLiqVapSol(property_evaluator_iface):
         # More general case would be:
         #   residual[6] = (55.508**2) * vec_liquid_molefrac_full[2] * vec_liquid_molefrac_full[3]  -
         #                       sca_k_caco3 * (vec_liquid_molefrac_full[0]**2)
-        residual[6] = 55.508 * nonlin_unkws[2] - np.sqrt(self.K_val_chemistry[0]) * nonlin_unkws[0]
+        # residual[6] = 55.508 * nonlin_unkws[2] - np.sqrt(self.K_val_chemistry[0]) * nonlin_unkws[0]
+        residual[6] = nonlin_unkws[2] * nonlin_unkws[3] - self.K_val_chemistry[0]
 
         # Eighth Equation is the sum of the phase fractions equal to 1 (1 - sum{nu_i} = 0):
         residual[7] = 1 - np.sum(nonlin_unkws[6:])
@@ -655,8 +656,10 @@ class Flash3PhaseLiqVapSol(property_evaluator_iface):
         # Compute jacobian row for chemical equilibrium constraint (K - Q = 0):
         # -----------------------------------------------------------------------------------------
         # NOTE: See computation of residual, this is not the general case!!!!
-        jacobian[6, 0] = -np.sqrt(self.K_val_chemistry[0])
-        jacobian[6, 2] = 55.508
+        # jacobian[6, 0] = -np.sqrt(self.K_val_chemistry[0])
+        # jacobian[6, 2] = 55.508
+        jacobian[6, 2] = nonlin_unkws[3]
+        jacobian[6, 3] = nonlin_unkws[2]
 
         # -----------------------------------------------------------------------------------------
         # Compute jacobian row for phase fractions equal to 1 (1 - sum{nu_i} = 0):

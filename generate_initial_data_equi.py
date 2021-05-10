@@ -8,11 +8,11 @@ import sys
 sys.stdout = open("equi_properties.txt", "w")
 
 # Define some convergence related parameters:
-conv_tol = 1e-16
-min_comp = 1e-16
+conv_tol = 1e-12
+min_comp = 1e-12
 
 # Set the equilibrium constant for the chemical equilibrium:
-kval_caco3 = 3.36 * 10 ** (-9)
+kval_caco3 = 0.0625
 
 # Define rate-annihilation matrix E:
 # Components: H20, CO2, Ca+2, CO3-2, CaCO3
@@ -23,8 +23,9 @@ mat_rate_annihilation = np.array([[1, 0, 0, 0, 0],
                                   [0, 0, 0, 1, 1]])
 
 # Flash container assuming Vapor-Liquid equilibrium
-kval_wat = 0.1  # 0.1080
-kval_co2 = 100  # 1149
+kval_wat = 0.1
+kval_co2 = 10
+molar_weight = np.array([18.015, 44.01, 40.078, 60.008, 100.086])
 
 """Physical properties"""
 prop_con_equi = PropertyContainer(phase_name=['Liquid', 'Vapor'], component_name=['H2O', 'CO2', 'Ca+2_and_CO3-2'],
@@ -53,7 +54,7 @@ print('Properties based on initial state: ')
 
 # Given some element composition, determine what phase-split is using defined properties:
 pressure = 95  # [bar]
-composition = np.array([0.01, 0.01, 0.98])  # element composition (see description above)
+composition = np.array([0.0882352941, min_comp, 0.911764706])  # element composition (see description above)
 state = np.append(pressure, composition[:-1])  # note that we simplify the model here and take the sum of Ca+2 and
                                                # CO3-2 as the last element, instead of them separately
 print('Initial state = ', state)
@@ -89,7 +90,14 @@ for phase in phase_list:
     density_list.append(prop_con_equi.density_ev[phase].evaluate(state))
     viscosity_list.append(prop_con_equi.viscosity_ev[phase].evaluate(state))
 
-saturation_list = (phase_frac / density_list) / sum((phase_frac / density_list))
+M_aq = 0
+M_g = 0
+for ii in range(4):
+    M_aq += liq_frac[ii] * molar_weight[ii]
+    M_g += vap_frac[ii] * molar_weight[ii]
+
+density_molar = np.array([density_list[0] / M_aq, density_list[1] / M_g])
+saturation_list = np.append((phase_frac[:-1] / density_molar) / sum((phase_frac[:-1] / density_molar)) * (1 - phase_frac[-1]), phase_frac[-1])
 sat_list_mobile = np.append(saturation_list[:-1] / sum(saturation_list[:-1]), 0)
 print(row_format.format('Phase MoleFrac', *phase_frac))
 print(row_format.format('Density', *density_list))
@@ -103,11 +111,11 @@ print('\n')
 print('Properties based on injection state: ')
 
 # Given some element composition, determine what phase-split is using defined properties:
-pressure = 125  # [bar]
-composition = np.array([0.99, 0.01, 0])  # element composition (see description above)
+pressure = 165  # [bar]
+composition = np.array([min_comp, 1 - min_comp * 2, min_comp])  # element composition (see description above)
 state = np.append(pressure, composition[:-1])  # note that we simplify the model here and take the sum of Ca+2 and
                                                # CO3-2 as the last element, instead of them separately
-print('Initial state = ', state)
+print('Injection state = ', state)
 
 liq_frac, vap_frac, sol_frac, phase_frac = prop_con_equi.flash_ev.evaluate(state, conv_tol, min_comp)
 zc_ini = liq_frac * phase_frac[0] + vap_frac * phase_frac[1] + sol_frac * phase_frac[2]
@@ -140,7 +148,14 @@ for phase in phase_list:
     density_list.append(prop_con_equi.density_ev[phase].evaluate(state))
     viscosity_list.append(prop_con_equi.viscosity_ev[phase].evaluate(state))
 
-saturation_list = (phase_frac / density_list) / sum((phase_frac / density_list))
+M_aq = 0
+M_g = 0
+for ii in range(4):
+    M_aq += liq_frac[ii] * molar_weight[ii]
+    M_g += vap_frac[ii] * molar_weight[ii]
+
+density_molar = np.array([density_list[0] / M_aq, density_list[1] / M_g])
+saturation_list = np.append((phase_frac[:-1] / density_molar) / sum((phase_frac[:-1] / density_molar)) * (1 - phase_frac[-1]), phase_frac[-1])
 sat_list_mobile = np.append(saturation_list[:-1] / sum(saturation_list[:-1]), 0)
 print(row_format.format('Phase MoleFrac', *phase_frac))
 print(row_format.format('Density', *density_list))
